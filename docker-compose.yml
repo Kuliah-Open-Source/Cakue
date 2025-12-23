@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: cakue_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: cakue_db
+      MYSQL_USER: cakue_user
+      MYSQL_PASSWORD: cakue123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - cakue_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: cakue_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root123
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - cakue_network
+
+  backend:
+    build: ./backend
+    container_name: cakue_backend
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: cakue_db
+      DB_USER: cakue_user
+      DB_PASSWORD: cakue123
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - cakue_network
+
+volumes:
+  mysql_data:
+
+networks:
+  cakue_network:
+    driver: bridge

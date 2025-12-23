@@ -1,0 +1,176 @@
+# Project Structure
+# /
+# ├── flutter/          (Flutter mobile app)
+# ├── backend/          (Express.js API)
+# ├── docker-compose.yml
+# └── README.md
+
+# ===================
+# FLUTTER SPECIFIC
+# ===================
+
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+
+# Flutter/Dart/Pub related
+flutter/.dart_tool/
+flutter/.flutter-plugins
+flutter/.flutter-plugins-dependencies
+flutter/.packages
+flutter/.pub-cache/
+flutter/.pub/
+flutter/build/
+flutter/**/doc/api/
+flutter/**/ios/Flutter/.last_build_id
+
+# Web related
+flutter/lib/generated_plugin_registrant.dart
+
+# Symbolication related
+flutter/app.*.symbols
+
+# Obfuscation related
+flutter/app.*.map.json
+
+# Android Studio build artifacts
+flutter/android/app/debug
+flutter/android/app/profile
+flutter/android/app/release
+
+# iOS build artifacts
+flutter/ios/Flutter/flutter_assets/
+flutter/ios/Flutter/App.framework
+flutter/ios/Flutter/Flutter.framework
+flutter/ios/Flutter/Generated.xcconfig
+flutter/ios/Runner/GeneratedPluginRegistrant.*
+
+# ===================
+# NODE.JS BACKEND
+# ===================
+
+# Dependencies
+backend/node_modules/
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+
+# Runtime data
+backend/pids
+backend/*.pid
+backend/*.seed
+backend/*.pid.lock
+
+# Coverage directory used by tools like istanbul
+backend/coverage/
+backend/.nyc_output
+
+# Grunt intermediate storage
+backend/.grunt
+
+# Bower dependency directory
+backend/bower_components
+
+# node-waf configuration
+backend/.lock-wscript
+
+# Compiled binary addons
+backend/build/Release
+
+# Dependency directories
+backend/jspm_packages/
+
+# Optional npm cache directory
+backend/.npm
+
+# Optional eslint cache
+backend/.eslintcache
+
+# Optional REPL history
+backend/.node_repl_history
+
+# Output of 'npm pack'
+backend/*.tgz
+
+# Yarn Integrity file
+backend/.yarn-integrity
+
+# Environment variables
+backend/.env
+backend/.env.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
+
+# ===================
+# DOCKER
+# ===================
+
+# Docker volumes
+mysql_data/
+
+# Docker logs
+*.log
+
+# ===================
+# DATABASE
+# ===================
+
+# MySQL dumps
+*.sql
+*.dump
+
+# ===================
+# GENERAL
+# ===================
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*.backup
