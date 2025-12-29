@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:managment/Screens/login.dart';
+import 'package:managment/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -215,16 +216,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   GestureDetector registerButton() {
     return GestureDetector(
-      onTap: () {
-        // TODO: Implement register logic
-        if (passwordController.text == confirmPasswordController.text) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => LoginScreen()),
+      onTap: () async {
+        if (nameController.text.isEmpty || 
+            emailController.text.isEmpty || 
+            passwordController.text.isEmpty ||
+            confirmPasswordController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please fill all fields')),
           );
-        } else {
+          return;
+        }
+
+        if (passwordController.text != confirmPasswordController.text) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Passwords do not match')),
+          );
+          return;
+        }
+
+        // Show loading
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(child: CircularProgressIndicator()),
+        );
+
+        try {
+          final result = await AuthService.register(
+            nameController.text,
+            emailController.text,
+            passwordController.text,
+          );
+
+          Navigator.pop(context); // Close loading
+
+          if (result['success']) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Registration successful! Please login.')),
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LoginScreen()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(result['message'])),
+            );
+          }
+        } catch (e) {
+          Navigator.pop(context); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Registration failed: $e')),
           );
         }
       },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:managment/Screens/register.dart';
 import 'package:managment/widgets/bottomnavigationbar.dart';
+import 'package:managment/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -145,12 +146,45 @@ class _LoginScreenState extends State<LoginScreen> {
 
   GestureDetector loginButton() {
     return GestureDetector(
-      onTap: () {
-        // TODO: Implement login logic
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => Bottom()),
+      onTap: () async {
+        if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please fill all fields')),
+          );
+          return;
+        }
+
+        // Show loading
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Center(child: CircularProgressIndicator()),
         );
+
+        try {
+          final result = await AuthService.login(
+            emailController.text,
+            passwordController.text,
+          );
+
+          Navigator.pop(context); // Close loading
+
+          if (result['success']) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => Bottom()),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(result['message'])),
+            );
+          }
+        } catch (e) {
+          Navigator.pop(context); // Close loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Login failed: $e')),
+          );
+        }
       },
       child: Container(
         alignment: Alignment.center,
