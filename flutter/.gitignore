@@ -45,3 +45,24 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# API keys and secrets
+api_keys/
+secrets/
+*.key
+*.pem
+
+# Firebase config (if used)
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+
+# Keystore files
+*.jks
+*.keystore
+key.properties

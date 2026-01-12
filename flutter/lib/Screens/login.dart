@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:managment/Screens/register.dart';
 import 'package:managment/widgets/bottomnavigationbar.dart';
 import 'package:managment/services/auth_service.dart';
+import 'package:managment/utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -11,11 +12,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   FocusNode emailFocus = FocusNode();
   FocusNode passwordFocus = FocusNode();
   bool isPasswordVisible = false;
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -51,34 +54,37 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       height: 450,
       width: 340,
-      child: Column(
-        children: [
-          SizedBox(height: 30),
-          Text(
-            'Welcome Back',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xff368983),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            SizedBox(height: 30),
+            Text(
+              'Welcome Back',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xff368983),
+              ),
             ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'Sign in to continue',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade600,
+            SizedBox(height: 10),
+            Text(
+              'Sign in to continue',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
             ),
-          ),
-          SizedBox(height: 40),
-          emailField(),
-          SizedBox(height: 20),
-          passwordField(),
-          SizedBox(height: 30),
-          loginButton(),
-          SizedBox(height: 20),
-          registerLink(),
-        ],
+            SizedBox(height: 40),
+            emailField(),
+            SizedBox(height: 20),
+            passwordField(),
+            SizedBox(height: 30),
+            loginButton(),
+            SizedBox(height: 20),
+            registerLink(),
+          ],
+        ),
       ),
     );
   }
@@ -86,10 +92,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Padding emailField() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextField(
+      child: TextFormField(
         focusNode: emailFocus,
         controller: emailController,
         keyboardType: TextInputType.emailAddress,
+        validator: Validators.validateEmail,
         decoration: InputDecoration(
           contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
           labelText: 'Email',
@@ -102,6 +109,14 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(width: 2, color: Color(0xff368983)),
           ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(width: 2, color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(width: 2, color: Colors.red),
+          ),
           prefixIcon: Icon(Icons.email_outlined, color: Colors.grey.shade500),
         ),
       ),
@@ -111,10 +126,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Padding passwordField() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: TextField(
+      child: TextFormField(
         focusNode: passwordFocus,
         controller: passwordController,
         obscureText: !isPasswordVisible,
+        validator: (value) => Validators.validateRequired(value, 'Password'),
         decoration: InputDecoration(
           contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 15),
           labelText: 'Password',
@@ -126,6 +142,14 @@ class _LoginScreenState extends State<LoginScreen> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(width: 2, color: Color(0xff368983)),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(width: 2, color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(width: 2, color: Colors.red),
           ),
           prefixIcon: Icon(Icons.lock_outline, color: Colors.grey.shade500),
           suffixIcon: IconButton(
@@ -146,28 +170,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   GestureDetector loginButton() {
     return GestureDetector(
-      onTap: () async {
-        if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Please fill all fields')),
-          );
+      onTap: isLoading ? null : () async {
+        if (!_formKey.currentState!.validate()) {
           return;
         }
 
-        // Show loading
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Center(child: CircularProgressIndicator()),
-        );
+        setState(() {
+          isLoading = true;
+        });
 
         try {
           final result = await AuthService.login(
             emailController.text,
             passwordController.text,
           );
-
-          Navigator.pop(context); // Close loading
 
           if (result['success']) {
             Navigator.pushReplacement(
@@ -176,32 +192,43 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(result['message'])),
+              SnackBar(
+                content: Text(result['message']),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         } catch (e) {
-          Navigator.pop(context); // Close loading
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Login failed: $e')),
+            SnackBar(
+              content: Text('Login failed: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
+        } finally {
+          setState(() {
+            isLoading = false;
+          });
         }
       },
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          color: Color(0xff368983),
+          color: isLoading ? Colors.grey : Color(0xff368983),
         ),
         width: 280,
         height: 50,
-        child: Text(
-          'Login',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            fontSize: 17,
-          ),
-        ),
+        child: isLoading
+            ? CircularProgressIndicator(color: Colors.white)
+            : Text(
+                'Login',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  fontSize: 17,
+                ),
+              ),
       ),
     );
   }

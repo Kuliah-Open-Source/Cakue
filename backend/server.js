@@ -3,14 +3,32 @@ const mysql = require('mysql2/promise');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
 require('dotenv').config();
+
+const { validateRegister, validateLogin, validateTransaction } = require('./middleware/validation');
+const { generalLimiter, loginLimiter } = require('./middleware/rateLimiter');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'cakue_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-app.use(cors());
-app.use(express.json());
+// Security check for JWT_SECRET
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  console.error('ERROR: JWT_SECRET must be set and at least 32 characters long');
+  process.exit(1);
+}
+
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  credentials: true
+}));
+app.use(generalLimiter);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const dbConfig = {
   host: process.env.DB_HOST || 'mysql',
@@ -146,12 +164,12 @@ app.get('/', (req, res) => {
 });
 
 // Auth Routes
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', validateRegister, async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
     
     // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     
     // Create user
     const [result] = await db.execute(
@@ -187,15 +205,11 @@ app.post('/api/auth/register', async (req, res) => {
       userId: result.insertId 
     });
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-      res.status(400).json({ error: 'Email already exists' });
-    } else {
-      res.status(500).json({ error: error.message });
-    }
+    next(error);
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, validateLogin, async (req, res, next) => {
   try {
     const { email, password } = req.body;
     
@@ -230,7 +244,7 @@ app.post('/api/auth/login', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
@@ -291,7 +305,7 @@ app.get('/api/transactions/:accountId', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/transactions', authenticateToken, async (req, res) => {
+app.post('/api/transactions', authenticateToken, validateTransaction, async (req, res, next) => {
   try {
     const { account_id, category_id, amount, type, description, transaction_date, local_id } = req.body;
     
@@ -316,7 +330,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
       server_id: result.insertId
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 });
 
@@ -387,3 +401,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   connectDB();
 });
+
+// Error handling middleware (must be last)
+app.use(notFoundHandler);
+app.use(errorHandler);

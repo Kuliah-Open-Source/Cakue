@@ -63,6 +63,41 @@ flutter/ios/Flutter/Generated.xcconfig
 flutter/ios/Runner/GeneratedPluginRegistrant.*
 
 # ===================
+# SECURITY & SECRETS
+# ===================
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+flutter/.env
+flutter/.env.*
+!flutter/.env.example
+
+# API keys and secrets
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+keys/
+credentials/
+
+# JWT secrets
+jwt_secret*
+
+# Database credentials
+db_credentials*
+
+# SSL certificates
+*.crt
+*.cert
+*.ca-bundle
+
+# ===================
 # NODE.JS BACKEND
 # ===================
 
@@ -114,20 +149,37 @@ backend/.yarn-integrity
 
 # Environment variables
 backend/.env
+backend/.env.*
+!backend/.env.example
 backend/.env.local
 backend/.env.development.local
 backend/.env.test.local
 backend/.env.production.local
 
+# Configuration files with secrets
+backend/config/production.json
+backend/config/secrets.json
+
 # ===================
-# DOCKER
+# DOCKER & DEPLOYMENT
 # ===================
 
 # Docker volumes
 mysql_data/
+postgres_data/
+redis_data/
 
 # Docker logs
 *.log
+docker-compose.override.yml
+
+# Production docker files
+docker-compose.prod.yml
+Dockerfile.prod
+
+# Kubernetes secrets
+k8s-secrets/
+*.yaml.secret
 
 # ===================
 # DATABASE

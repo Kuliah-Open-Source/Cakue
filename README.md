@@ -28,18 +28,34 @@ Cakue/
 - Flutter SDK (for mobile development)
 - Node.js (for backend development)
 
-### 1. Start Backend Services
+### 1. Automated Setup (Recommended)
 ```bash
-# Start MySQL, phpMyAdmin, and Express.js backend
-docker-compose up -d
-
-# Services will be available at:
-# - Backend API: http://localhost:3000
-# - phpMyAdmin: http://localhost:8080
-# - MySQL: localhost:3306
+# Clone and setup everything
+git clone <repository-url>
+cd Cakue
+./setup.sh
 ```
 
-### 2. Run Flutter App
+### 2. Manual Setup
+
+#### Backend Setup
+```bash
+cd backend
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env file and set secure JWT_SECRET (minimum 32 characters)
+nano .env
+
+# Install dependencies
+npm install
+
+# Start services
+docker-compose up -d
+```
+
+#### Flutter Setup
 ```bash
 cd flutter
 flutter pub get
@@ -147,10 +163,15 @@ docker-compose build backend
 
 ## 🔐 Security Features
 
-- Password visibility toggle
-- Input validation
-- Secure API endpoints (planned)
-- Environment variables for sensitive data
+- **JWT Authentication**: Secure token-based authentication with configurable expiry
+- **Password Security**: Bcrypt hashing with salt rounds
+- **Input Validation**: Comprehensive server-side and client-side validation
+- **Rate Limiting**: Protection against brute force attacks
+- **CORS Configuration**: Controlled cross-origin resource sharing
+- **Security Headers**: Helmet.js for additional security headers
+- **Environment Variables**: Secure credential management
+- **SQL Injection Protection**: Parameterized queries
+- **Error Handling**: Consistent error responses without information leakage
 
 ## 🎯 Roadmap
 

@@ -1,36 +1,40 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
+import '../utils/error_handler.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://10.0.2.2:3000/api'; // Android emulator
-  // static const String baseUrl = 'http://localhost:3000/api'; // iOS simulator
-
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(AppConfig.loginUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: jsonEncode({
-          'email': email,
+          'email': email.trim().toLowerCase(),
           'password': password,
         }),
-      );
+      ).timeout(Duration(seconds: AppConfig.requestTimeout));
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
         return {
           'success': true,
-          'data': jsonDecode(response.body),
+          'data': data,
+          'message': 'Login successful'
         };
       } else {
+        final error = ErrorHandler.handleHttpError(response);
         return {
           'success': false,
-          'message': 'Invalid credentials',
+          'message': error.message
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'message': 'Connection error: $e',
+        'message': ErrorHandler.handleError(e)
       };
     }
   }
@@ -39,30 +43,35 @@ class AuthService {
       String name, String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(AppConfig.registerUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: jsonEncode({
-          'name': name,
-          'email': email,
+          'name': name.trim(),
+          'email': email.trim().toLowerCase(),
           'password': password,
         }),
-      );
+      ).timeout(Duration(seconds: AppConfig.requestTimeout));
 
       if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
         return {
           'success': true,
-          'data': jsonDecode(response.body),
+          'data': data,
+          'message': 'Registration successful'
         };
       } else {
+        final error = ErrorHandler.handleHttpError(response);
         return {
           'success': false,
-          'message': 'Registration failed',
+          'message': error.message
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'message': 'Connection error: $e',
+        'message': ErrorHandler.handleError(e)
       };
     }
   }

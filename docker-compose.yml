@@ -34,12 +34,15 @@ services:
   backend:
     build: ./backend
     container_name: cakue_backend
+    env_file:
+      - ./backend/.env
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: cakue_db
       DB_USER: cakue_user
       DB_PASSWORD: cakue123
+      NODE_ENV: production
     ports:
       - "3000:3000"
     depends_on:
