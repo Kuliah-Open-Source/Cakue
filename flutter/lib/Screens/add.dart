@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:managment/data/model/add_date.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:managment/services/transaction_service.dart';
 
 class Add_Screen extends StatefulWidget {
   const Add_Screen({super.key});
@@ -88,11 +89,39 @@ class _Add_ScreenState extends State<Add_Screen> {
 
   GestureDetector save() {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
+        if (selctedItem == null || selctedItemi == null || amount_c.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please fill all fields'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
         var add = Add_data(
             selctedItemi!, amount_c.text, date, expalin_C.text, selctedItem!);
-        box.add(add);
-        Navigator.of(context).pop();
+        
+        // Save to both local and remote
+        bool success = await TransactionService.saveTransaction(add);
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Transaction saved successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error saving transaction'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       },
       child: Container(
         alignment: Alignment.center,

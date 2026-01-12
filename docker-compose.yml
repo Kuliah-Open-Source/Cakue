@@ -15,6 +15,10 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - cakue_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -27,7 +31,8 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - cakue_network
 
@@ -40,18 +45,20 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: cakue_db
-      DB_USER: cakue_user
-      DB_PASSWORD: cakue123
+      DB_USER: root
+      DB_PASSWORD: root123
       NODE_ENV: production
     ports:
       - "3000:3000"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     volumes:
       - ./backend:/app
       - /app/node_modules
     networks:
       - cakue_network
+    restart: unless-stopped
 
 volumes:
   mysql_data:

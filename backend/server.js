@@ -4,11 +4,10 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
+const PDFDocument = require('pdfkit');
 require('dotenv').config();
 
-const { validateRegister, validateLogin, validateTransaction } = require('./middleware/validation');
-const { generalLimiter, loginLimiter } = require('./middleware/rateLimiter');
-const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,9 +25,14 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
   credentials: true
 }));
-app.use(generalLimiter);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Simple test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working', timestamp: new Date().toISOString() });
+});
 
 const dbConfig = {
   host: process.env.DB_HOST || 'mysql',
@@ -164,7 +168,7 @@ app.get('/', (req, res) => {
 });
 
 // Auth Routes
-app.post('/api/auth/register', validateRegister, async (req, res, next) => {
+app.post('/api/auth/register', async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
     
@@ -209,7 +213,7 @@ app.post('/api/auth/register', validateRegister, async (req, res, next) => {
   }
 });
 
-app.post('/api/auth/login', loginLimiter, validateLogin, async (req, res, next) => {
+app.post('/api/auth/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     
@@ -287,6 +291,69 @@ app.get('/api/categories/:accountId', authenticateToken, async (req, res) => {
   }
 });
 
+// Get transaction count
+app.get('/api/transactions-count', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT COUNT(*) as count FROM transactions');
+    res.json({ count: rows[0].count });
+  } catch (error) {
+    console.error('Count error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Simple transaction endpoint for testing
+app.get('/api/transactions-simple', async (req, res) => {
+  try {
+    const { account_id, category_id, amount, type, description, transaction_date } = req.query;
+    
+    console.log('Creating transaction:', { account_id, category_id, amount, type, description, transaction_date });
+    
+    const [result] = await db.execute(
+      'INSERT INTO transactions (account_id, category_id, amount, type, description, transaction_date) VALUES (?, ?, ?, ?, ?, ?)',
+      [account_id || 3, category_id || 13, amount || 10000, type || 'expense', description || 'Test', transaction_date || '2026-01-12']
+    );
+    
+    res.json({ 
+      success: true,
+      id: result.insertId,
+      message: 'Transaction created'
+    });
+  } catch (error) {
+    console.error('Transaction error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+app.post('/api/transactions-test', async (req, res) => {
+  try {
+    console.log('Received transaction data:', req.body);
+    
+    const { account_id, category_id, amount, type, description, transaction_date, local_id } = req.body;
+    
+    // Simple validation
+    if (!account_id || !category_id || !amount || !type || !transaction_date) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const [result] = await db.execute(
+      'INSERT INTO transactions (account_id, category_id, amount, type, description, transaction_date, local_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [account_id, category_id, amount, type, description || '', transaction_date, local_id || null]
+    );
+    
+    console.log('Transaction inserted with ID:', result.insertId);
+    
+    res.status(201).json({ 
+      id: result.insertId,
+      local_id,
+      server_id: result.insertId,
+      message: 'Transaction created successfully'
+    });
+  } catch (error) {
+    console.error('Transaction creation error:', error);
+    res.status(500).json({ error: 'Failed to create transaction' });
+  }
+});
+
 // Transaction Routes
 app.get('/api/transactions/:accountId', authenticateToken, async (req, res) => {
   try {
@@ -305,7 +372,7 @@ app.get('/api/transactions/:accountId', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/transactions', authenticateToken, validateTransaction, async (req, res, next) => {
+app.post('/api/transactions', authenticateToken, async (req, res, next) => {
   try {
     const { account_id, category_id, amount, type, description, transaction_date, local_id } = req.body;
     
@@ -373,6 +440,223 @@ app.post('/api/sync/transactions', authenticateToken, async (req, res) => {
   }
 });
 
+// PDF Export Route (Real data from database)
+app.get('/api/finance/pdf-test', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+    
+    // Get all transactions from all users (for testing)
+    const [transactions] = await db.execute(
+      `SELECT t.*, c.name as category_name, u.name as user_name
+       FROM transactions t 
+       JOIN categories c ON t.category_id = c.id 
+       JOIN accounts a ON t.account_id = a.id
+       JOIN users u ON a.user_id = u.id
+       WHERE t.transaction_date BETWEEN ? AND ?
+       ORDER BY t.transaction_date DESC`,
+      [startDate, endDate]
+    );
+    
+    // Create PDF
+    const doc = new PDFDocument();
+    
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="financial-report-${startDate}-to-${endDate}.pdf"`);
+    
+    // Pipe PDF to response
+    doc.pipe(res);
+    
+    // Add content to PDF
+    doc.fontSize(20).text('CAKUE Financial Report', 50, 50);
+    doc.fontSize(12).text(`Period: ${startDate} to ${endDate}`, 50, 80);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 50, 100);
+    doc.text(`Total Transactions: ${transactions.length}`, 50, 120);
+    
+    // Add line
+    doc.moveTo(50, 140).lineTo(550, 140).stroke();
+    
+    let yPosition = 160;
+    let totalIncome = 0;
+    let totalExpense = 0;
+    
+    // Table headers
+    doc.fontSize(10)
+       .text('Date', 50, yPosition)
+       .text('Category', 120, yPosition)
+       .text('Description', 200, yPosition)
+       .text('Type', 320, yPosition)
+       .text('Amount', 420, yPosition)
+       .text('User', 480, yPosition);
+    
+    yPosition += 20;
+    doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke();
+    yPosition += 10;
+    
+    // Add transactions
+    if (transactions.length === 0) {
+      doc.fontSize(12).text('No transactions found for this period', 50, yPosition + 20);
+    } else {
+      transactions.forEach(transaction => {
+        if (yPosition > 700) {
+          doc.addPage();
+          yPosition = 50;
+        }
+        
+        const amount = parseFloat(transaction.amount);
+        if (transaction.type === 'income') {
+          totalIncome += amount;
+        } else {
+          totalExpense += amount;
+        }
+        
+        // Format date properly
+        const transactionDate = new Date(transaction.transaction_date);
+        const formattedDate = transactionDate.toISOString().split('T')[0];
+        
+        doc.fontSize(8)
+           .text(formattedDate, 50, yPosition)
+           .text(transaction.category_name || 'N/A', 120, yPosition)
+           .text((transaction.description || 'No description').substring(0, 20), 200, yPosition)
+           .text(transaction.type, 320, yPosition)
+           .text(amount.toLocaleString(), 420, yPosition)
+           .text((transaction.user_name || 'Unknown').substring(0, 10), 480, yPosition);
+        
+        yPosition += 15;
+      });
+    }
+    
+    // Add summary
+    yPosition += 20;
+    doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke();
+    yPosition += 20;
+    
+    doc.fontSize(12)
+       .text(`Total Income: ${totalIncome.toLocaleString()}`, 50, yPosition)
+       .text(`Total Expense: ${totalExpense.toLocaleString()}`, 200, yPosition)
+       .text(`Balance: ${(totalIncome - totalExpense).toLocaleString()}`, 350, yPosition);
+    
+    // Finalize PDF
+    doc.end();
+    
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
+// PDF Export Route
+app.get('/api/finance/pdf', authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Start date and end date are required' });
+    }
+    
+    // Get user's account
+    const [accounts] = await db.execute(
+      'SELECT id FROM accounts WHERE user_id = ? LIMIT 1',
+      [req.user.userId]
+    );
+    
+    if (accounts.length === 0) {
+      return res.status(404).json({ error: 'No account found' });
+    }
+    
+    const accountId = accounts[0].id;
+    
+    // Get transactions
+    const [transactions] = await db.execute(
+      `SELECT t.*, c.name as category_name 
+       FROM transactions t 
+       JOIN categories c ON t.category_id = c.id 
+       WHERE t.account_id = ? AND t.transaction_date BETWEEN ? AND ?
+       ORDER BY t.transaction_date DESC`,
+      [accountId, startDate, endDate]
+    );
+    
+    // Create PDF
+    const doc = new PDFDocument();
+    
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="financial-report-${startDate}-to-${endDate}.pdf"`);
+    
+    // Pipe PDF to response
+    doc.pipe(res);
+    
+    // Add content to PDF
+    doc.fontSize(20).text('CAKUE Financial Report', 50, 50);
+    doc.fontSize(12).text(`Period: ${startDate} to ${endDate}`, 50, 80);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 50, 100);
+    
+    // Add line
+    doc.moveTo(50, 120).lineTo(550, 120).stroke();
+    
+    let yPosition = 140;
+    let totalIncome = 0;
+    let totalExpense = 0;
+    
+    // Table headers
+    doc.fontSize(10)
+       .text('Date', 50, yPosition)
+       .text('Category', 120, yPosition)
+       .text('Description', 200, yPosition)
+       .text('Type', 350, yPosition)
+       .text('Amount', 450, yPosition);
+    
+    yPosition += 20;
+    doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke();
+    yPosition += 10;
+    
+    // Add transactions
+    transactions.forEach(transaction => {
+      if (yPosition > 700) {
+        doc.addPage();
+        yPosition = 50;
+      }
+      
+      const amount = parseFloat(transaction.amount);
+      if (transaction.type === 'income') {
+        totalIncome += amount;
+      } else {
+        totalExpense += amount;
+      }
+      
+      doc.fontSize(9)
+         .text(transaction.transaction_date, 50, yPosition)
+         .text(transaction.category_name, 120, yPosition)
+         .text(transaction.description || '-', 200, yPosition)
+         .text(transaction.type, 350, yPosition)
+         .text(amount.toLocaleString(), 450, yPosition);
+      
+      yPosition += 15;
+    });
+    
+    // Add summary
+    yPosition += 20;
+    doc.moveTo(50, yPosition).lineTo(550, yPosition).stroke();
+    yPosition += 20;
+    
+    doc.fontSize(12)
+       .text(`Total Income: ${totalIncome.toLocaleString()}`, 50, yPosition)
+       .text(`Total Expense: ${totalExpense.toLocaleString()}`, 250, yPosition)
+       .text(`Balance: ${(totalIncome - totalExpense).toLocaleString()}`, 450, yPosition);
+    
+    // Finalize PDF
+    doc.end();
+    
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
 // Reports Routes
 app.get('/api/reports/:accountId', authenticateToken, async (req, res) => {
   try {
@@ -402,6 +686,12 @@ app.listen(PORT, () => {
   connectDB();
 });
 
-// Error handling middleware (must be last)
-app.use(notFoundHandler);
-app.use(errorHandler);
+// Basic error handling
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal server error' });
+});

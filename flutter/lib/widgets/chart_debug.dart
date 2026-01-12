@@ -41,6 +41,13 @@ class _ChartState extends State<Chart> {
       default:
     }
 
+    // Debug: Print data info
+    print('Chart Debug - Index: ${widget.indexx}');
+    print('Chart Debug - Data count: ${a?.length ?? 0}');
+    if (a != null && a!.isNotEmpty) {
+      print('Chart Debug - Sample data: ${a![0].name}, ${a![0].amount}, ${a![0].IN}');
+    }
+
     // Check if data is empty
     if (a == null || a!.isEmpty) {
       return Container(
@@ -83,35 +90,27 @@ class _ChartState extends State<Chart> {
     }
 
     // Generate chart data
+    List<int> timeData = time(a!, b ? true : false);
     List<SalesData> chartData = [];
-    Map<String, int> groupedData = {};
     
-    // Group data by time period
-    for (var transaction in a!) {
-      String key;
+    for (int index = 0; index < timeData.length; index++) {
+      String xValue;
       if (j) {
-        key = b 
-            ? transaction.datetime.hour.toString()
-            : transaction.datetime.day.toString();
+        xValue = b 
+            ? a![index].datetime.hour.toString()
+            : a![index].datetime.day.toString();
       } else {
-        key = transaction.datetime.month.toString();
+        xValue = a![index].datetime.month.toString();
       }
       
-      int amount = int.parse(transaction.amount);
-      if (transaction.IN != 'Income') {
-        amount = -amount;
-      }
+      int yValue = b
+          ? (index > 0 ? timeData[index] + timeData[index - 1] : timeData[index])
+          : (index > 0 ? timeData[index] + timeData[index - 1] : timeData[index]);
       
-      groupedData[key] = (groupedData[key] ?? 0) + amount;
+      chartData.add(SalesData(xValue, yValue));
     }
-    
-    // Convert to chart data
-    groupedData.forEach((key, value) {
-      chartData.add(SalesData(key, value.abs())); // Use absolute value for display
-    });
-    
-    // Sort chart data
-    chartData.sort((a, b) => int.parse(a.year).compareTo(int.parse(b.year)));
+
+    print('Chart Debug - Chart data points: ${chartData.length}');
 
     return Container(
       width: double.infinity,
