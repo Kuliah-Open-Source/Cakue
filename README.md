@@ -2,6 +2,12 @@
 
 A full-stack financial management application built with Flutter (mobile) and Express.js (backend).
 
+## 📚 Documentation
+
+- **[Technology & Architecture](TECH_ARCHITECTURE.md)** - Complete system architecture and technology stack
+- **[API Documentation](API_DOCUMENTATION.md)** - REST API endpoints and integration guide
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Setup, deployment, and maintenance instructions
+
 ## 🏗️ Project Structure
 
 ```
